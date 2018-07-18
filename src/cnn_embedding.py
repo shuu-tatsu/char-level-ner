@@ -16,17 +16,22 @@ from tqdm import tqdm
 from torch.nn.parameter import Parameter
 import load
 
+import torchvision
+import torchvision.transforms as transforms
+import numpy as np
 
-class Net(nn.Module):
+
+class CNN(nn.Module):
 
     def __init__(self):
-        super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(3, 6, 5)
-        self.pool = nn.MaxPool2d(2, 2)
+        super(CNN, self).__init__()
+        self.conv1 = nn.Conv2d(1, 6, 3)  # in_channels, out_channels, kernel_size
+        self.pool = nn.MaxPool2d(2, 2)  # kernel_size, stride=None
         self.conv2 = nn.Conv2d(6, 16, 5)
         self.fc1 = nn.Linear(16 * 5 * 5, 120)
         self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
+        self.fc3 = nn.Linear(84, 50)
+        self.fc4 = nn.Linear(50, 3)
 
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x)))
@@ -35,18 +40,19 @@ class Net(nn.Module):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
+        x = self.fc4(x)
         return x
 
 
-def inference(test_loader):
+def inference(testloader, classes, model):
     dataiter = iter(testloader)
     images, labels = dataiter.next()
 
     # print images
-    imshow(torchvision.utils.make_grid(images))
+    # imshow(torchvision.utils.make_grid(images))
     print('GroundTruth: ', ' '.join('%5s' % classes[labels[j]] for j in range(4)))
 
-    outputs = net(Variable(images))
+    outputs = model(autograd.Variable(images))
     _, predicted = torch.max(outputs, 1)
 
     print('Predicted: ', ' '.join('%5s' % classes[predicted[j]]
@@ -57,7 +63,7 @@ def inference(test_loader):
     with torch.no_grad():
         for data in testloader:
             images, labels = data
-            outputs = net(images)
+            outputs = model(images)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
@@ -66,12 +72,12 @@ def inference(test_loader):
         100 * correct / total))
 
 
-def train(train_loader):
-    net = Net()
+def train(trainloader):
+    model = CNN()
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
-    for epoch in range(2):  # loop over the dataset multiple times
+    for epoch in range(1):  # loop over the dataset multiple times
 
         running_loss = 0.0
         for i, data in enumerate(trainloader, 0):
@@ -82,7 +88,7 @@ def train(train_loader):
             optimizer.zero_grad()
 
             # forward + backward + optimize
-            outputs = net(inputs)
+            outputs = model(inputs)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
@@ -95,10 +101,26 @@ def train(train_loader):
                 running_loss = 0.0
 
     print('Finished Training')
+    return model
 
 
 def main():
+    trainloader = DataLoader(trainset, batch_size=4, shuffle=True)
+    testloader = DataLoader(testset, batch_size=4, shuffle=False)
 
 
-if __name__ == '__name__':
-    main()
+    # get some random training images
+    dataiter = iter(trainloader)
+
+    # iamges (batch_num, channel, height, width)
+    # torch.Size([4, 3, 32, 32])
+    # labels (label)
+    # torch.Size([4])
+    images, labels = dataiter.next()
+
+
+    #model = train(trainloader)
+    #inference(testloader, classes, model)
+
+
+main()
