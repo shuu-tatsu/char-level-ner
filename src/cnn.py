@@ -21,10 +21,10 @@ import torchvision.transforms as transforms
 import numpy as np
 
 
-class Net(nn.Module):
+class CNN(nn.Module):
 
     def __init__(self):
-        super(Net, self).__init__()
+        super(CNN, self).__init__()
         self.conv1 = nn.Conv2d(3, 6, 5)
         self.pool = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(6, 16, 5)
@@ -42,7 +42,7 @@ class Net(nn.Module):
         return x
 
 
-def inference(testloader, classes, net):
+def inference(testloader, classes, model):
     dataiter = iter(testloader)
     images, labels = dataiter.next()
 
@@ -50,7 +50,7 @@ def inference(testloader, classes, net):
     # imshow(torchvision.utils.make_grid(images))
     print('GroundTruth: ', ' '.join('%5s' % classes[labels[j]] for j in range(4)))
 
-    outputs = net(autograd.Variable(images))
+    outputs = model(autograd.Variable(images))
     _, predicted = torch.max(outputs, 1)
 
     print('Predicted: ', ' '.join('%5s' % classes[predicted[j]]
@@ -61,7 +61,7 @@ def inference(testloader, classes, net):
     with torch.no_grad():
         for data in testloader:
             images, labels = data
-            outputs = net(images)
+            outputs = model(images)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
@@ -71,9 +71,9 @@ def inference(testloader, classes, net):
 
 
 def train(trainloader):
-    net = Net()
+    model = CNN()
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
     for epoch in range(1):  # loop over the dataset multiple times
 
@@ -86,7 +86,7 @@ def train(trainloader):
             optimizer.zero_grad()
 
             # forward + backward + optimize
-            outputs = net(inputs)
+            outputs = model(inputs)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
@@ -99,7 +99,7 @@ def train(trainloader):
                 running_loss = 0.0
 
     print('Finished Training')
-    return net
+    return model
 
 
 def main():
