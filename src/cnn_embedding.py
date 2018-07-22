@@ -14,7 +14,7 @@ import inference
 import utils
 from tqdm import tqdm
 from torch.nn.parameter import Parameter
-import load
+import load_char
 
 import torchvision
 import torchvision.transforms as transforms
@@ -34,13 +34,13 @@ class CNN(nn.Module):
 
     def __init__(self):
         super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(1, 6, 3)  # in_channels, out_channels, kernel_size
-        self.pool = nn.MaxPool2d(2, 2)  # kernel_size, stride=None
-        self.conv2 = nn.Conv2d(6, 16, 5)
+        # (in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True)
+        self.conv1 = nn.Conv1d(1, 3, 3)
+        self.pool = nn.MaxPool1d(2, 2)  # kernel_size, stride=None
+        self.conv2 = nn.Conv1d(6, 16, 5)
         self.fc1 = nn.Linear(16 * 5 * 5, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 50)
-        self.fc4 = nn.Linear(50, 3)
+        self.fc2 = nn.Linear(120, 50)
+        self.fc3 = nn.Linear(50, 3)
 
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x)))
@@ -81,18 +81,21 @@ def inference(testloader, classes, model):
         100 * correct / total))
 
 
+def transform_ix_to_word(inputs, train_ix_to_word):
+    sentence = [train_ix_to_word[ix] for ix in inputs]
+    print(sentence)
+    return sentence
+
+
 def train(target_dir,
           embedding_dim,
           hidden_dim,
           glove_file):
     torch.manual_seed(1)
-    train_word_to_ix, train_tag_to_ix, train_sents_idx, train_labels_idx = pickle.load(
-                                                           open(target_dir + "CoNLL_train.pkl", "rb"))
-    test_word_to_ix, test_tag_to_ix, test_sents_idx, test_labels_idx = pickle.load(
-                                                           open(target_dir + "CoNLL_test.pkl", "rb"))
-
-    trainloader = DataLoader(train_sents_idx, train_labels_idx, batch_size=1, shuffle=True)
-    testloader = DataLoader(test_sents_idx, test_labels_idx, batch_size=1, shuffle=False)
+    train_char2idx, train_label2idx, train_sents_idx, train_labels_idx = pickle.load(
+                                                           open(target_dir + "CoNLL_char_train.pkl", "rb"))
+    test_char2idx, test_label2idx, test_sents_idx, test_labels_idx = pickle.load(
+                                                           open(target_dir + "CoNLL_char_test.pkl", "rb"))
 
     model = CNN()
     criterion = nn.CrossEntropyLoss()
@@ -101,19 +104,24 @@ def train(target_dir,
     for epoch in range(1):  # loop over the dataset multiple times
 
         running_loss = 0.0
-        for inputs, labels in zip(trainloader.sentences, trainloader.labels):
-            inputs = torch.Tensor(inputs)
-            labels = torch.Tensor(labels)
-            #inputs: tensor([  64.,  186.,   39.,  186.,    2.,  186.,   50.,  114.,    0.])
-            #labels: tensor([ 1.,  0.,  1.,  0.,  0.,  0.,  1.,  0.,  0.])
+        for sentence, labels in zip(train_sents_idx, train_labels_idx):
+            for word, label in zip(sentence, labels):
 
-            # zero the parameter gradients
-            optimizer.zero_grad()
-            # forward + backward + optimize
-            outputs = model.forward(inputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
+                print(word)
+                print(label)
+                word_tensor = torch.LongTensor(word)
+                label_tensor = torch.LongTensor(label)
+                print(word_tensor)
+                print(label_tensor)
+                print('')
+
+                # zero the parameter gradients
+                optimizer.zero_grad()
+                # forward + backward + optimize
+                output = model.forward(word_tensor)
+                loss = criterion(output, label_tensor)
+                loss.backward()
+                optimizer.step()
 
     print('Finished Training')
     return model
