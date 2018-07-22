@@ -21,6 +21,15 @@ import torchvision.transforms as transforms
 import numpy as np
 
 
+class DataLoader():
+
+    def __init__(self, sentences, labels, batch_size, shuffle):
+        self.sentences = sentences
+        self.labels = labels
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+
+
 class CNN(nn.Module):
 
     def __init__(self):
@@ -72,55 +81,56 @@ def inference(testloader, classes, model):
         100 * correct / total))
 
 
-def train(trainloader):
+def train(target_dir,
+          embedding_dim,
+          hidden_dim,
+          glove_file):
+    torch.manual_seed(1)
+    train_word_to_ix, train_tag_to_ix, train_sents_idx, train_labels_idx = pickle.load(
+                                                           open(target_dir + "CoNLL_train.pkl", "rb"))
+    test_word_to_ix, test_tag_to_ix, test_sents_idx, test_labels_idx = pickle.load(
+                                                           open(target_dir + "CoNLL_test.pkl", "rb"))
+
+    trainloader = DataLoader(train_sents_idx, train_labels_idx, batch_size=1, shuffle=True)
+    testloader = DataLoader(test_sents_idx, test_labels_idx, batch_size=1, shuffle=False)
+
     model = CNN()
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    optimizer = optim.RMSprop(model.parameters())
 
     for epoch in range(1):  # loop over the dataset multiple times
 
         running_loss = 0.0
-        for i, data in enumerate(trainloader, 0):
-            # get the inputs
-            inputs, labels = data
+        for inputs, labels in zip(trainloader.sentences, trainloader.labels):
+            inputs = torch.Tensor(inputs)
+            labels = torch.Tensor(labels)
+            #inputs: tensor([  64.,  186.,   39.,  186.,    2.,  186.,   50.,  114.,    0.])
+            #labels: tensor([ 1.,  0.,  1.,  0.,  0.,  0.,  1.,  0.,  0.])
 
             # zero the parameter gradients
             optimizer.zero_grad()
-
             # forward + backward + optimize
-            outputs = model(inputs)
+            outputs = model.forward(inputs)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-
-            # print statistics
-            running_loss += loss.item()
-            if i % 2000 == 1999:    # print every 2000 mini-batches
-                print('[%d, %5d] loss: %.3f' %
-                      (epoch + 1, i + 1, running_loss / 2000))
-                running_loss = 0.0
 
     print('Finished Training')
     return model
 
 
 def main():
-    trainloader = DataLoader(trainset, batch_size=4, shuffle=True)
-    testloader = DataLoader(testset, batch_size=4, shuffle=False)
+    TARGET_DIR = '../corpus/data/'
+    GLOVE_FILE = '../corpus/glove.6B/glove.6B.50d.txt'
+    EMBEDDING_DIM = 50
+    HIDDEN_DIM = 25
 
+    model = train(target_dir=TARGET_DIR,
+                  embedding_dim=EMBEDDING_DIM,
+                  hidden_dim=HIDDEN_DIM,
+                  glove_file=GLOVE_FILE)
 
-    # get some random training images
-    dataiter = iter(trainloader)
-
-    # iamges (batch_num, channel, height, width)
-    # torch.Size([4, 3, 32, 32])
-    # labels (label)
-    # torch.Size([4])
-    images, labels = dataiter.next()
-
-
-    #model = train(trainloader)
     #inference(testloader, classes, model)
 
-
-main()
+if __name__ == '__main__':
+    main()

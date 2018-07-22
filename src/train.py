@@ -16,6 +16,7 @@ import utils
 from tqdm import tqdm
 from torch.nn.parameter import Parameter
 import load
+import cnn_embedding as cnn
 
 '''
 # Source code for torch.nn.functional
@@ -34,7 +35,11 @@ def embedding(input, weight, padding_idx=None, max_norm=None, norm_type=2,
     if max_norm is not None:
         with torch.no_grad():
             torch.embedding_renorm_(weight, input, max_norm, norm_type)
-
+    #print('input:{}'.format(input.shape))
+    #print('weight:{}'.format(weight.shape))
+    output = torch.embedding(weight, input, padding_idx, scale_grad_by_freq, sparse)
+    #print('output:{}'.format(output.shape))
+    #print('')
     # グラフの考慮はせず，numpyのような単純な計算
     return torch.embedding(weight, input, padding_idx, scale_grad_by_freq, sparse)
 
@@ -77,6 +82,34 @@ class Embedding(Module):
         return F.embedding(
             input, self.weight, self.padding_idx, self.max_norm,
             self.norm_type, self.scale_grad_by_freq, self.sparse)
+
+    def extra_repr(self):
+        s = '{num_embeddings}, {embedding_dim}'
+        if self.padding_idx is not None:
+            s += ', padding_idx={padding_idx}'
+        if self.max_norm is not None:
+            s += ', max_norm={max_norm}'
+        if self.norm_type != 2:
+            s += ', norm_type={norm_type}'
+        if self.scale_grad_by_freq is not False:
+            s += ', scale_grad_by_freq={scale_grad_by_freq}'
+        if self.sparse is not False:
+            s += ', sparse=True'
+        return s.format(**self.__dict__)
+
+    @classmethod
+    def from_pretrained(cls, embeddings, freeze=True, sparse=False):
+        assert embeddings.dim() == 2, \
+            'Embeddings parameter is expected to be 2-dimensional'
+        rows, cols = embeddings.shape
+        embedding = cls(
+            num_embeddings=rows,
+            embedding_dim=cols,
+            _weight=embeddings,
+            sparse=sparse,
+        )
+        embedding.weight.requires_grad = not freeze
+        return embedding
 '''
 
 
@@ -115,17 +148,23 @@ class LSTMTagger(nn.Module):
                 autograd.Variable(torch.zeros(1, 1, self.hidden_dim)))
 
     def forward(self, sentence):
+        #sentence:torch.Size([72])
+        #embeds:torch.Size([72, 50])
         embeds = self.word_embeddings.forward(sentence)
+        #cnn_embeds = cnn_embedding(sentence)
 
         # concat(embeds from globe & embeds from CNN)
         # → input the embeds into LSTM
-
         lstm_out, self.hidden = self.lstm(
             embeds.view(len(sentence), 1, -1), self.hidden)
         tag_space = self.hidden2tag(lstm_out.view(len(sentence), -1))
         tag_scores = F.log_softmax(tag_space, dim=1)
         return tag_scores
 
+'''
+def cnn_embedding(sentence):
+    return embeds
+'''
 
 def train(target_dir,
           embedding_dim,
