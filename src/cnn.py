@@ -33,6 +33,8 @@ class CNN(nn.Module):
         self.fc3 = nn.Linear(84, 10)
 
     def forward(self, x):
+        #print(x.shape)
+        #torch.Size([4, 3, 32, 32])
         x = self.pool(F.relu(self.conv1(x)))
         x = self.pool(F.relu(self.conv2(x)))
         x = x.view(-1, 16 * 5 * 5)

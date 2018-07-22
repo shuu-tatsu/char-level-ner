@@ -34,22 +34,32 @@ class CNN(nn.Module):
 
     def __init__(self):
         super(CNN, self).__init__()
-        # (in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True)
-        self.conv1 = nn.Conv1d(1, 3, 3)
-        self.pool = nn.MaxPool1d(2, 2)  # kernel_size, stride=None
-        self.conv2 = nn.Conv1d(6, 16, 5)
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
-        self.fc2 = nn.Linear(120, 50)
+        self.conv1 = nn.Conv1d(1, 1, 3, padding=1) #(in_channels, out_channels, kernel_size,
+                                                   # stride=1, padding=0, dilation=1, groups=1, bias=True)
+        self.pool = nn.MaxPool1d(2, padding=1)  #(kernel_size, stride=None, padding=0,
+                                     # dilation=1, return_indices=False, ceil_mode=False)
+        self.conv2 = nn.Conv1d(1, 1, 3, padding=1)
+        self.fc1 = nn.Linear(2, 10) #(in_features, out_features, bias=True)
+        self.fc2 = nn.Linear(10, 50)
         self.fc3 = nn.Linear(50, 3)
 
     def forward(self, x):
+        print('forward')
+        print(x.shape)
         x = self.pool(F.relu(self.conv1(x)))
+        print(x.shape)
         x = self.pool(F.relu(self.conv2(x)))
-        x = x.view(-1, 16 * 5 * 5)
+        print(x.shape)
+        x = x.view(-1, 1)
+        print(x.shape)
         x = F.relu(self.fc1(x))
+        print(x.shape)
         x = F.relu(self.fc2(x))
+        print(x.shape)
         x = self.fc3(x)
+        print(x.shape)
         x = self.fc4(x)
+        print(x.shape)
         return x
 
 
@@ -93,9 +103,9 @@ def train(target_dir,
           glove_file):
     torch.manual_seed(1)
     train_char2idx, train_label2idx, train_sents_idx, train_labels_idx = pickle.load(
-                                                           open(target_dir + "CoNLL_char_train.pkl", "rb"))
+                                                         open(target_dir + "CoNLL_char_train.pkl", "rb"))
     test_char2idx, test_label2idx, test_sents_idx, test_labels_idx = pickle.load(
-                                                           open(target_dir + "CoNLL_char_test.pkl", "rb"))
+                                                         open(target_dir + "CoNLL_char_test.pkl", "rb"))
 
     model = CNN()
     criterion = nn.CrossEntropyLoss()
@@ -107,10 +117,10 @@ def train(target_dir,
         for sentence, labels in zip(train_sents_idx, train_labels_idx):
             for word, label in zip(sentence, labels):
 
-                print(word)
-                print(label)
-                word_tensor = torch.LongTensor(word)
-                label_tensor = torch.LongTensor(label)
+                print([[word]])
+                print([[label]])
+                word_tensor = torch.Tensor([[word]])
+                label_tensor = torch.Tensor([[label]])
                 print(word_tensor)
                 print(label_tensor)
                 print('')
