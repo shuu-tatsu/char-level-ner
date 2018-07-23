@@ -114,7 +114,6 @@ def make_dic(char2idx, doc_sent):
             char2idx[char] = cnt
             cnt += 1
     char2idx[u'<unk>'] = len(char2idx)
-    print(char2idx)
     return char2idx
 
 

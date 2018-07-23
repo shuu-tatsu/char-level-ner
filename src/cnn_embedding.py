@@ -21,45 +21,40 @@ import torchvision.transforms as transforms
 import numpy as np
 
 
-class DataLoader():
-
-    def __init__(self, sentences, labels, batch_size, shuffle):
-        self.sentences = sentences
-        self.labels = labels
-        self.batch_size = batch_size
-        self.shuffle = shuffle
-
-
 class CNN(nn.Module):
 
-    def __init__(self):
+    def __init__(self, vocab_size):
         super(CNN, self).__init__()
-        self.conv1 = nn.Conv1d(1, 1, 3, padding=1) #(in_channels, out_channels, kernel_size,
-                                                   # stride=1, padding=0, dilation=1, groups=1, bias=True)
-        self.pool = nn.MaxPool1d(2, padding=1)  #(kernel_size, stride=None, padding=0,
-                                     # dilation=1, return_indices=False, ceil_mode=False)
-        self.conv2 = nn.Conv1d(1, 1, 3, padding=1)
-        self.fc1 = nn.Linear(2, 10) #(in_features, out_features, bias=True)
-        self.fc2 = nn.Linear(10, 50)
-        self.fc3 = nn.Linear(50, 3)
+        self.vocab_size = vocab_size
+
+        #(in_features, out_features, bias=True)
+        self.fc = nn.Linear(self.vocab_size, 10)
+
+        #(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True)
+        self.conv = nn.Conv2d(1, 1, 3, padding=1)
+
 
     def forward(self, x):
-        print('forward')
+        x = one_hot(x, self.vocab_size)
+        print('one_hot')
+        print(x)
         print(x.shape)
-        x = self.pool(F.relu(self.conv1(x)))
+
+        x = torch.Tensor([[x]])
+        print('tensor')
+        print(x)
         print(x.shape)
-        x = self.pool(F.relu(self.conv2(x)))
+
+        x = self.fc(x)
+        print('fc')
+        print(x)
         print(x.shape)
-        x = x.view(-1, 1)
+
+        x = self.conv(x)
+        print('conv')
+        print(x)
         print(x.shape)
-        x = F.relu(self.fc1(x))
-        print(x.shape)
-        x = F.relu(self.fc2(x))
-        print(x.shape)
-        x = self.fc3(x)
-        print(x.shape)
-        x = self.fc4(x)
-        print(x.shape)
+
         return x
 
 
@@ -93,8 +88,12 @@ def inference(testloader, classes, model):
 
 def transform_ix_to_word(inputs, train_ix_to_word):
     sentence = [train_ix_to_word[ix] for ix in inputs]
-    print(sentence)
     return sentence
+
+
+def one_hot(x, vocab_size):
+    one_hot = np.identity(vocab_size)[x]
+    return one_hot
 
 
 def train(target_dir,
@@ -106,8 +105,7 @@ def train(target_dir,
                                                          open(target_dir + "CoNLL_char_train.pkl", "rb"))
     test_char2idx, test_label2idx, test_sents_idx, test_labels_idx = pickle.load(
                                                          open(target_dir + "CoNLL_char_test.pkl", "rb"))
-
-    model = CNN()
+    model = CNN(len(train_char2idx))
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.RMSprop(model.parameters())
 
@@ -116,20 +114,14 @@ def train(target_dir,
         running_loss = 0.0
         for sentence, labels in zip(train_sents_idx, train_labels_idx):
             for word, label in zip(sentence, labels):
-
-                print([[word]])
-                print([[label]])
-                word_tensor = torch.Tensor([[word]])
-                label_tensor = torch.Tensor([[label]])
-                print(word_tensor)
-                print(label_tensor)
-                print('')
+                print('word:    {}'.format(word))
+                print('label:    {}'.format(label))
 
                 # zero the parameter gradients
                 optimizer.zero_grad()
                 # forward + backward + optimize
-                output = model.forward(word_tensor)
-                loss = criterion(output, label_tensor)
+                output = model.forward(word)
+                loss = criterion(output, label)
                 loss.backward()
                 optimizer.step()
 
